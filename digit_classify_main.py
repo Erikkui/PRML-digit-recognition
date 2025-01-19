@@ -1,9 +1,12 @@
 import os
 
 import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import confusion_matrix
 
 def load_data( data_path ):
     '''
@@ -94,13 +97,33 @@ def kkn_classifier( X_train, y_train, sample, k = 3 ):
     
     return label
 
+def results( y_test, y_classified ):
+    '''
+    Computes the accuracy and confusion matrix of the classification.
+    
+    Inputs: 
+    y_test: true labels of the test samples.
+    y_classified: labels classified by the classifier.
+    
+    Returns:
+    '''
+    
+    accuracy = np.sum( y_test == y_classified ) / len( y_test )
+    print( 'Accuracy: ', accuracy )
+    
+    cm = confusion_matrix( y_test, y_classified )
+    sns.heatmap( cm, annot = True )
+    plt.title('Accuracy: ' + str(accuracy))
+    plt.show()
+
+
 def main():
     
     data_path = os.getcwd() + '/data/digits_3d/training_data'
     data, labels = load_data( data_path )
     data = preprocess_data( data )    
     
-    X_train, X_test, y_train, y_test = train_test_split( data, labels, test_size=0.2, stratify = labels ) 
+    X_train, X_test, y_train, y_test = train_test_split( data, labels, test_size=0.25, stratify = labels ) 
     # print( y_test)
     # Classify test samples
     y_classified = []
@@ -108,9 +131,7 @@ def main():
         label = kkn_classifier( X_train, y_train, test_sample )
         y_classified.append( label )
         
-    # Compute accuracy
-    accuracy = np.sum( np.array( y_classified ) == np.array( y_test ) ) / len( y_test )
-
-    print( 'Accuracy: ', accuracy )
+    results( y_test, y_classified )
+    
 main()
         
