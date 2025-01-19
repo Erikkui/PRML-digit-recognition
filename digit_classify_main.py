@@ -4,14 +4,18 @@ import numpy as np
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from scipy.interpolate import CubicSpline
 
 def load_data( data_path ):
     '''
-    Data path: path to the directory containing the data files, each file containing measurement of a digit
+    Loads the data from the specified path.
+    
+    Inputs:
+    data_path: path to the directory containing the data files, each file containing measurement of a digit
     in a N x 3 matrix. 
     
-    Returns a list of numpy arrays, each array containing the measurement of a digit.
+    Returns:
+    data: a list of numpy arrays, each array containing the measurement of a digit.
+    labels: a list of labels corresponding to the data.
     '''
     files = os.scandir( data_path )
 
@@ -26,15 +30,18 @@ def load_data( data_path ):
             data.append( number_data )
             labels.append( label )      
                     
-    return data, labels
+    return data, np.array(labels)
 
 def preprocess_data( data, N_interp = 128 ):
     '''
+    Preprocesses the data by interpolating to equal lengths and standardizing.
+    
+    Inputs:
     Data: list of numpy arrays, each array containing the measurement of a digit.
     N_interp: number of points to interpolate the variable-length data to.
     
-    Returns a list of numpy arrays, each array containing the measurement of a digit after preprocessing.
-    Preprocessing contains interpolation to equal elngths, and standardization.
+    Returns:
+    data: a list of numpy arrays, each array containing the measurement of a digit after preprocessing.
     '''
     scaler = StandardScaler()
     
@@ -55,19 +62,55 @@ def preprocess_data( data, N_interp = 128 ):
         
     return data
         
-
-
+def kkn_classifier( X_train, y_train, sample, k = 3 ):
+    '''
+    Returns the most frequent digit label for a given sample basedf on the k-nearest neighbors.
     
+    Inputs:
+    X_train: array of training samples.
+    y_train: array of training labels.
+    sample: sample to classify.
+    k: number of neighbors to consider.
+    
+    Returns:
+    label: the most frequent label among the k-nearest neighbors.
+    '''
+    
+    # Make sure sample is equal length to training samples
+    N_train = X_train[0].shape[0]
+    if sample.shape[0] != N_train:
+        sample = preprocess_data( [sample], N_train )[0]
+    
+    # Compute distances to all training samples
+    distances = np.zeros( len( X_train ) )
+    for ii, train_sample in enumerate( X_train ):
+        distances[ii] = np.linalg.norm( train_sample - sample, ord = "fro" )    # Frobenius norm
+     
+    # Find k-nearest neighbors
+    sorted_inds = np.argsort( distances )   # Sort indices based on distances
+    nearest_labes = y_train[ sorted_inds[:k] ]  # Get labels of k-nearest neighbors
+    vals, counts = np.unique( nearest_labes, return_counts = True )     # Count the number of occurrences of each label
+    label = vals[ np.argmax( counts ) ]     # Get the most frequent label
+    
+    return label
 
 def main():
     
     data_path = os.getcwd() + '/data/digits_3d/training_data'
     data, labels = load_data( data_path )
     data = preprocess_data( data )    
-    X_train, X_test, y_train, y_test = train_test_split( data, labels, test_size=0.2, stratify = labels ) 
-
     
+    X_train, X_test, y_train, y_test = train_test_split( data, labels, test_size=0.2, stratify = labels ) 
+    # print( y_test)
+    # Classify test samples
+    y_classified = []
+    for ii, test_sample in enumerate( X_test ):
+        label = kkn_classifier( X_train, y_train, test_sample )
+        y_classified.append( label )
+        
+    # Compute accuracy
+    accuracy = np.sum( np.array( y_classified ) == np.array( y_test ) ) / len( y_test )
 
-
+    print( 'Accuracy: ', accuracy )
 main()
         
